@@ -184,12 +184,19 @@ export function GameHud() {
     split()
   }
 
-  // Show review modal after every 3 bets placed (deals)
+  // Show review modal after every 3 bets placed, but wait until RESULT so game doesn't hang
+  const betsPlaced = useRef(0)
   useEffect(() => {
     if (phase !== 'DEALING') return
-    completedRounds.current += 1
-    if (completedRounds.current % 3 === 0) {
-      setTimeout(() => setReviewOpen(true), 1200)
+    betsPlaced.current += 1
+    if (betsPlaced.current % 3 === 0) {
+      // Wait until the round finishes before showing
+      const check = setInterval(() => {
+        if (useGame.getState().phase === 'RESULT') {
+          clearInterval(check)
+          setTimeout(() => setReviewOpen(true), 800)
+        }
+      }, 200)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId])
