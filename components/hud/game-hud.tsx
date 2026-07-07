@@ -279,14 +279,15 @@ export function GameHud() {
         </div>
 
         <div className="flex flex-col items-center gap-1">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Dealing tonight
-          </p>
-          <p className="font-serif text-sm" style={{ color: dealer.accent }}>
-            {dealer.name}
-          </p>
           <p className="text-[10px] text-muted-foreground tabular-nums">
             Shoe {shoePercent}% · {DEFAULT_DECK_COUNT} decks
+          </p>
+        </div>
+
+        <div className="flex flex-col items-end gap-1 pointer-events-none mr-1">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Dealer</p>
+          <p className="font-serif text-sm" style={{ color: dealer.accent }}>
+            {dealer.name}
           </p>
         </div>
 
@@ -369,9 +370,7 @@ export function GameHud() {
               transition={{ duration: 0.35, ease: 'easeOut' }}
               className="text-sm italic text-muted-foreground text-center max-w-md text-pretty"
             >
-              {'\u201C'}
               {dealerLine}
-              {'\u201D'}
             </motion.p>
           )}
         </AnimatePresence>

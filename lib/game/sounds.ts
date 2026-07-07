@@ -27,7 +27,7 @@ let musicMuted = false
 let sfxBus: GainNode | null = null
 let musicBus: GainNode | null = null
 
-const MUSIC_VOLUME = 0.08
+const MUSIC_VOLUME = 0.04
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -237,8 +237,7 @@ export function playSound(name: SoundName) {
  * ──────────────────────────────────────────────────────────── */
 
 // Public domain Mozart recording from IMSLP / Internet Archive
-const MOZART_URL =
-  'https://upload.wikimedia.org/wikipedia/commons/3/3f/Eine_kleine_Nachtmusik_-_1._Allegro.ogg'
+const MOZART_URL = '/music/mozart.mp3'
 
 let musicPlaying = false
 let mozartEl: HTMLAudioElement | null = null
