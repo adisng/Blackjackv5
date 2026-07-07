@@ -9,8 +9,8 @@ import {
   CardShoe,
   ChipStack,
   DealerPresence,
+  GLBCharacter,
   PendantLamp,
-  SahurCharacter,
   sahurImpact,
   TableSurface,
   WinSparkles,
@@ -188,8 +188,8 @@ const StaticEnvironment = memo(function StaticEnvironment({
       <TableSurface feltColor={felt.felt} trimColor={felt.trim} />
       <CardShoe />
       <PendantLamp />
-      {dealer.id === 'tung-sahur' ? (
-        <SahurCharacter name={dealer.name} accent={dealer.accent} reducedMotion={reducedMotion} />
+      {dealer.glb ? (
+        <GLBCharacter glb={dealer.glb} name={dealer.name} accent={dealer.accent} reducedMotion={reducedMotion} />
       ) : (
         <DealerPresence
           name={dealer.name}
@@ -302,7 +302,7 @@ export function TableScene() {
   const dealerId = useSettings((s) => s.dealerId)
   const dealer = getDealer(dealerId)
 
-  // Tune renderer once per mount for the current device
+  const isCutsceneDealer = !!dealer.glb
   const { dpr, antialias, shadowSize } = useMemo(() => {
     if (typeof window === 'undefined') {
       return { dpr: [1, 1.75] as [number, number], antialias: true, shadowSize: 1024 }
@@ -328,7 +328,7 @@ export function TableScene() {
         <color attach="background" args={['#0B0C0E']} />
         <fog attach="fog" args={['#0B0C0E', 9, 18]} />
         <Suspense fallback={null}>
-          <CameraRig reducedMotion={reducedMotion} sahur={dealer.id === 'tung-sahur'} />
+          <CameraRig reducedMotion={reducedMotion} sahur={isCutsceneDealer} />
           <SceneLights accent={dealer.accent} shadowSize={shadowSize} />
           <GameElements reducedMotion={reducedMotion} />
         </Suspense>
@@ -344,7 +344,7 @@ export function TableScene() {
         }}
       />
       {/* Red flash synced to the Sahur loss cutscene */}
-      <LossVignette active={dealer.id === 'tung-sahur'} />
+      <LossVignette active={isCutsceneDealer} />
     </div>
   )
 }

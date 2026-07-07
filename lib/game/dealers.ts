@@ -3,6 +3,7 @@ import type { DealerPersona } from './types'
 export const DEALERS: DealerPersona[] = [
   {
     id: 'veteran',
+    glb: undefined,
     name: 'The Veteran',
     tagline: 'Thirty years on the felt. Nothing surprises him.',
     accent: '#C9A227',
@@ -35,6 +36,7 @@ export const DEALERS: DealerPersona[] = [
   },
   {
     id: 'tung-sahur',
+    glb: '/models/tung-sahur.glb',
     name: 'Tung Tung Tung Sahur',
     tagline: 'Wakes the table for suhoor. Bats included.',
     accent: '#C96A2A',
@@ -66,6 +68,42 @@ export const DEALERS: DealerPersona[] = [
       ],
       win: ['Your hand. The drum approves.', 'Tung of victory. Take your chips.'],
       lose: ['The house tungs last.', 'Lost. Listen closer next time.'],
+    },
+  },
+  {
+    id: 'brr-patapim',
+    glb: '/models/brr-patapim.glb',
+    name: 'Brr Brr Patapim',
+    tagline: 'Chaotic energy. Unpredictable. Somehow always wins.',
+    accent: '#5B8CFF',
+    portraitBg: '#0a0e1c',
+    portraitFg: '#5B8CFF',
+    lines: {
+      deal: [
+        'Brr brr. Cards are out.',
+        'Patapim. The shoe has spoken.',
+        'Brr brr brr. Play your hand.',
+      ],
+      playerBlackjack: [
+        'PATAPIM! Twenty-one! The chaos rewards you!',
+        'Brr brr brr... blackjack. Even I am impressed.',
+      ],
+      dealerBust: [
+        'Brr brr... I busted. The patapim backfired.',
+        'Too many. You are paid. Brr.',
+      ],
+      playerBust: [
+        'Patapim. Over twenty-one. Brr brr.',
+        'The chaos took you. Better luck next hand.',
+        'Brr brr brr. That is a bust.',
+      ],
+      push: ['Brr. A tie. The patapim is neutral.', 'Push. We reset the chaos.'],
+      bigWin: [
+        'MASSIVE PATAPIM. The table shakes!',
+        'Brr brr brr brr. A legendary hand.',
+      ],
+      win: ['Your hand. Brr brr.', 'Patapim of victory. Take your chips.'],
+      lose: ['The house patapims last.', 'Brr brr. Lost. The chaos is mine.'],
     },
   },
 ]

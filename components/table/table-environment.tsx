@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame, useLoader } from '@react-three/fiber'
 import { RoundedBox, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useGame } from '@/lib/game/store'
 
 const GOLD = '#C9A227'
@@ -203,7 +203,7 @@ export function DealerPresence({
 }
 
 /**
- * Impact signal shared with the CameraRig: while the Sahur bat swing
+ * Impact signal shared with the CameraRig: while a GLB dealer's hit
  * "connects", this drives a brief, subtle camera shake.
  */
 export const sahurImpact = { shake: 0 }
@@ -212,16 +212,16 @@ const easeOutCubicEnv = (t: number) => 1 - Math.pow(1 - t, 3)
 const easeInOutEnv = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
 
 /**
- * "Tung Tung Tung Sahur" dealer using the user's uploaded 3D model (FBX +
- * texture). Idles with a slow sway; lunges forward with a punchy "tung"
- * motion when the player loses a round.
- * Only mounted for the `tung-sahur` persona.
+ * Generic GLB dealer character. Idles with a slow sway; lunges forward
+ * when the player loses a round. Used for all GLB-based dealer personas.
  */
-export function SahurCharacter({
+export function GLBCharacter({
+  glb,
   name,
   accent,
   reducedMotion,
 }: {
+  glb: string
   name: string
   accent: string
   reducedMotion: boolean
@@ -230,31 +230,17 @@ export function SahurCharacter({
   const model = useRef<THREE.Group>(null)
   const anim = useRef({ t: 0, swing: -1, wait: 0, lastRound: -1 })
 
-  const fbx = useLoader(FBXLoader, '/models/tung-sahur.fbx')
-  const texture = useLoader(THREE.TextureLoader, '/models/tung-sahur-texture.png')
+  const gltf = useLoader(GLTFLoader, glb)
 
-  // Prepare the model once: apply the uploaded texture, enable shadows,
-  // and normalize its size/origin so it sits behind the table correctly.
   const { scene, scale, yOffset } = useMemo(() => {
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.flipY = true
-
-    const scene = fbx.clone()
+    const scene = gltf.scene.clone()
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
         mesh.castShadow = true
         mesh.receiveShadow = false
-        mesh.material = new THREE.MeshStandardMaterial({
-          map: texture,
-          roughness: 0.75,
-          metalness: 0.02,
-        })
       }
     })
-
-    // Normalize: scale so the character stands ~2.1 world units tall,
-    // with its feet at y=0 within the group.
     const box = new THREE.Box3().setFromObject(scene)
     const size = new THREE.Vector3()
     box.getSize(size)
@@ -262,7 +248,7 @@ export function SahurCharacter({
     const scale = 2.1 / height
     const yOffset = -box.min.y * scale
     return { scene, scale, yOffset }
-  }, [fbx, texture])
+  }, [gltf])
 
   useFrame((_, delta) => {
     const g = group.current
@@ -270,18 +256,15 @@ export function SahurCharacter({
     const a = anim.current
     if (!reducedMotion) a.t += delta
 
-    // Idle sway
     g.position.y = 0.05 + (reducedMotion ? 0 : Math.sin(a.t * 1.1) * 0.02)
     g.rotation.z = reducedMotion ? 0 : Math.sin(a.t * 0.8) * 0.02
     g.rotation.y = reducedMotion ? 0 : Math.sin(a.t * 0.5) * 0.05
 
-    // Detect a fresh player loss (mirror of the win-sparkle condition)
     const gs = useGame.getState()
     const isLoss = gs.phase === 'RESULT' && gs.banner?.tone === 'red'
     if (isLoss && gs.roundId !== a.lastRound) {
       a.lastRound = gs.roundId
       a.swing = 0
-      // Wait for the loss-cutscene camera to zoom in before the hit lands
       a.wait = reducedMotion ? 0 : 0.32
     }
 
@@ -293,16 +276,12 @@ export function SahurCharacter({
       return
     }
 
-    // ~300ms punchy lunge forward, quick ease back (fits the 1.25s cutscene)
     a.swing = Math.min(1, a.swing + delta / (a.swing < 0.35 ? 0.3 : 0.55))
     const p = a.swing
     const amount =
       p < 0.35 ? easeOutCubicEnv(p / 0.35) : 1 - easeInOutEnv((p - 0.35) / 0.65)
 
-    if (reducedMotion) {
-      // Reduced motion: skip the lunge and camera shake entirely
-    } else {
-      // Lean forward + slight drop, like slamming the bat down
+    if (!reducedMotion) {
       m.rotation.x = amount * 0.45
       m.position.z = amount * 0.5
       m.position.y = -amount * 0.12
@@ -323,7 +302,6 @@ export function SahurCharacter({
       <group ref={model}>
         <primitive object={scene} scale={scale} position={[0, yOffset, 0]} />
       </group>
-      {/* Engraved name plate on the rail (same as other dealers) */}
       <group position={[0, -0.6, 1.15]} rotation={[-0.5, 0, 0]}>
         <RoundedBox args={[1.7, 0.34, 0.05]} radius={0.02} castShadow>
           <meshStandardMaterial color="#141210" roughness={0.35} metalness={0.5} />

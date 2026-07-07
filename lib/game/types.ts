@@ -58,6 +58,7 @@ export type DealerMoment =
 
 export interface DealerPersona {
   id: string
+  glb?: string
   name: string
   tagline: string
   accent: string
