@@ -36,6 +36,7 @@ interface GameState {
   lastBet: number
   dealerId: string
 
+  leaveTable: () => void
   setDealerId: (id: string) => void
   enterTable: () => void
   addChip: (value: number) => void
@@ -213,6 +214,22 @@ export const useGame = create<GameState>()(
         dealerId: 'veteran',
 
         setDealerId: (dealerId) => set({ dealerId }),
+
+        leaveTable: () => {
+          clearTimers()
+          set({
+            phase: 'IDLE',
+            bet: 0,
+            playerHands: [],
+            activeHandIndex: 0,
+            dealerCards: [],
+            holeRevealed: false,
+            insuranceOffered: false,
+            insuranceBet: 0,
+            banner: null,
+            dealerLine: null,
+          })
+        },
 
         enterTable: () => {
           clearTimers()

@@ -135,6 +135,7 @@ export function GameHud() {
   const rebetAndDeal = useGame((s) => s.rebetAndDeal)
   const lastBet = useGame((s) => s.lastBet)
   const resetBankroll = useGame((s) => s.resetBankroll)
+  const leaveTable = useGame((s) => s.leaveTable)
 
   const dealerId = useSettings((s) => s.dealerId)
   const dealer = getDealer(dealerId)
@@ -270,6 +271,7 @@ export function GameHud() {
         <div className="flex items-center gap-3 pointer-events-auto">
           <Link
             href="/"
+            onClick={leaveTable}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-xs uppercase tracking-[0.2em] py-2"
             aria-label="Back to main menu"
           >

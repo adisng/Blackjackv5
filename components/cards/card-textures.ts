@@ -3,11 +3,11 @@
 import * as THREE from 'three'
 import type { Rank, Suit } from '@/lib/game/types'
 
-const IVORY = '#F2EFE6'
-const RED = '#B3382C'
-const DARK = '#17181B'
+const IVORY = '#FFFFFF'
+const RED = '#CC2200'
+const DARK = '#0A0A0F'
 const GOLD = '#C9A227'
-const CHARCOAL = '#121317'
+const CHARCOAL = '#0D0E12'
 
 const SUIT_GLYPHS: Record<Suit, string> = {
   spades: '\u2660',
@@ -22,7 +22,7 @@ let backCache: THREE.CanvasTexture | null = null
 // Logical drawing space stays 256x358; the canvas renders at 2x for sharpness.
 const W = 256
 const H = 358
-const RES = 2
+const RES = 3
 
 /** Generate a card face texture (rank + suit) on a canvas. Cached per rank+suit. */
 export function getFaceTexture(rank: Rank, suit: Suit): THREE.CanvasTexture {
@@ -41,40 +41,40 @@ export function getFaceTexture(rank: Rank, suit: Suit): THREE.CanvasTexture {
   roundRect(ctx, 0, 0, W, H, 18)
   ctx.fill()
 
-  // Subtle inner border
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)'
-  ctx.lineWidth = 2
+  // Stronger inner border
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)'
+  ctx.lineWidth = 3
   roundRect(ctx, 6, 6, W - 12, H - 12, 14)
   ctx.stroke()
 
   const color = suit === 'hearts' || suit === 'diamonds' ? RED : DARK
   const glyph = SUIT_GLYPHS[suit]
 
-  // Corner indices (top-left, and rotated bottom-right)
+  // Corner indices
   ctx.fillStyle = color
   ctx.textAlign = 'center'
 
-  ctx.font = '600 44px Georgia, serif'
-  ctx.fillText(rank, 34, 52)
-  ctx.font = '36px Georgia, serif'
-  ctx.fillText(glyph, 34, 90)
+  ctx.font = 'bold 52px Georgia, serif'
+  ctx.fillText(rank, 34, 56)
+  ctx.font = 'bold 40px Georgia, serif'
+  ctx.fillText(glyph, 34, 96)
 
   ctx.save()
-  ctx.translate(W - 34, H - 52 + 14)
+  ctx.translate(W - 34, H - 56 + 14)
   ctx.rotate(Math.PI)
-  ctx.font = '600 44px Georgia, serif'
+  ctx.font = 'bold 52px Georgia, serif'
   ctx.fillText(rank, 0, 14)
-  ctx.font = '36px Georgia, serif'
+  ctx.font = 'bold 40px Georgia, serif'
   ctx.fillText(glyph, 0, 52)
   ctx.restore()
 
   // Large center suit
-  ctx.font = '120px Georgia, serif'
-  ctx.fillText(glyph, W / 2, H / 2 + 42)
+  ctx.font = 'bold 130px Georgia, serif'
+  ctx.fillText(glyph, W / 2, H / 2 + 48)
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.needsUpdate = true
   faceCache.set(key, texture)
   return texture
@@ -136,7 +136,7 @@ export function getBackTexture(): THREE.CanvasTexture {
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.needsUpdate = true
   backCache = texture
   return texture

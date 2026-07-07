@@ -6,7 +6,12 @@ const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', '
 const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
 
 const FONT_URLS = ['/fonts/Geist-Bold.ttf', '/fonts/Geist-Regular.ttf']
-const MODEL_URLS = ['/models/tung-sahur.fbx', '/models/tung-sahur-texture.png']
+const MODEL_URLS = [
+  '/models/tung-sahur.fbx',
+  '/models/tung-sahur-texture.png',
+  '/models/brr-patapim.glb',
+  '/music/mozart.mp3',
+]
 
 let preloadPromise: Promise<void> | null = null
 
@@ -26,7 +31,6 @@ export function preloadAssets(onProgress: (pct: number) => void): Promise<void> 
   }
 
   preloadPromise = (async () => {
-    // Weights: scene chunk 45, fonts 15, textures 40
     let sceneDone = 0
     let fontsDone = 0
     let texturesDone = 0
@@ -34,18 +38,21 @@ export function preloadAssets(onProgress: (pct: number) => void): Promise<void> 
 
     report()
 
-    // 1. Warm the heavy 3D chunk (three + fiber + drei + scene components)
+    // 1. Warm all heavy chunks in parallel
     const scenePromise = Promise.all([
       import('@/components/table/table-scene'),
+      import('@/components/table/table-environment'),
       import('@/components/cards/card-textures'),
-    ]).then(([, textures]) => {
+      import('three'),
+      import('@react-three/fiber'),
+      import('@react-three/drei'),
+    ]).then(([,, textures]) => {
       sceneDone = 1
       report()
       return textures
     })
 
-    // 2. Warm the HTTP cache for the 3D text fonts (used by drei <Text>)
-    //    and the Sahur dealer model + texture so the scene never hitches.
+    // 2. Fetch all assets into browser cache in parallel
     const fontsPromise = Promise.all(
       [...FONT_URLS, ...MODEL_URLS].map((url) =>
         fetch(url, { cache: 'force-cache' }).catch(() => null),
@@ -55,22 +62,20 @@ export function preloadAssets(onProgress: (pct: number) => void): Promise<void> 
       report()
     })
 
-    const textures = await scenePromise
-    await fontsPromise
+    const [textures] = await Promise.all([scenePromise, fontsPromise])
 
-    // 3. Pre-generate every card texture in small chunks so the UI stays smooth
+    // 3. Pre-generate all card textures in larger chunks for speed
     const combos: Array<[Rank, Suit]> = []
     for (const suit of SUITS) for (const rank of RANKS) combos.push([rank, suit])
 
     textures.getBackTexture()
-    const CHUNK = 8
+    const CHUNK = 26 // larger chunks = faster, still yields to keep UI responsive
     for (let i = 0; i < combos.length; i += CHUNK) {
       for (const [rank, suit] of combos.slice(i, i + CHUNK)) {
         textures.getFaceTexture(rank, suit)
       }
       texturesDone = Math.min(1, (i + CHUNK) / combos.length)
       report()
-      // Yield to the main thread between chunks
       await new Promise((r) => setTimeout(r, 0))
     }
 

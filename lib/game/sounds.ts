@@ -27,7 +27,7 @@ let musicMuted = false
 let sfxBus: GainNode | null = null
 let musicBus: GainNode | null = null
 
-const MUSIC_VOLUME = 0.04
+const MUSIC_VOLUME = 0.12
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null

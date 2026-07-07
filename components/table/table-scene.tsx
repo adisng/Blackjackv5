@@ -61,8 +61,8 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
     // On mobile: lower, closer, steeper angle focused on the card area
     // On desktop: standard over-the-shoulder view
     const targetX = drift * 1.2
-    const targetY = isMobile ? 6.0 + driftY : 7.0 + driftY
-    const targetZ = isMobile ? 6.5 : 6.5
+    const targetY = isMobile ? 5.0 + driftY : 7.0 + driftY
+    const targetZ = isMobile ? 5.2 : 6.5
     const lookY = isMobile ? 0.0 : 0.0
     const lookZ = isMobile ? -0.2 : -0.1
 

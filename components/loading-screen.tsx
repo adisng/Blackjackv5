@@ -16,7 +16,7 @@ const MICRO_COPY = [
 const SUITS = ['\u2660', '\u2665', '\u2666', '\u2663']
 
 const SESSION_KEY = 'house-edge-loaded'
-const MIN_DISPLAY_MS = 1600
+const MIN_DISPLAY_MS = 600
 
 export function LoadingScreen({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState(0)
@@ -57,7 +57,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
         setTimeout(() => {
           sessionStorage.setItem(SESSION_KEY, '1')
           onDone()
-        }, 750)
+        }, 350)
       }, wait + 300)
     })
 
@@ -83,7 +83,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background"
       initial={{ opacity: 1 }}
       animate={{ opacity: leaving ? 0 : 1 }}
-      transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
     >
       <motion.h1
         initial={{ opacity: 0, y: 8 }}
