@@ -15,6 +15,7 @@ import { getDealer } from '@/lib/game/dealers'
 import { useSettings } from '@/lib/game/settings-store'
 import { ensureAudioUnlocked, playSound, stopMusic } from '@/lib/game/sounds'
 import { SettingsDrawer } from '@/components/menu/settings-drawer'
+import { ReviewModal } from '@/components/review-modal'
 import { DEFAULT_DECK_COUNT } from '@/lib/game/deck'
 
 const CHIP_STYLES: Record<number, string> = {
@@ -106,6 +107,8 @@ function ControlCluster({ children, id }: { children: React.ReactNode; id: strin
 export function GameHud() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [actionsBusy, setActionsBusy] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const completedRounds = useRef(0)
   const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const phase = useGame((s) => s.phase)
@@ -180,6 +183,16 @@ export function GameHud() {
     hideActionsBriefly(900)
     split()
   }
+
+  // Show review modal after every 3 completed rounds
+  useEffect(() => {
+    if (phase !== 'RESULT') return
+    completedRounds.current += 1
+    if (completedRounds.current % 3 === 0) {
+      setTimeout(() => setReviewOpen(true), 1200)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId])
 
   // Unlock audio + start the ambient tune on the first interaction
   useEffect(() => {
@@ -609,6 +622,12 @@ export function GameHud() {
       <div className="pointer-events-auto">
         <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
+
+      <ReviewModal
+        open={reviewOpen}
+        dealerName={dealer.name}
+        onClose={() => setReviewOpen(false)}
+      />
     </div>
   )
 }
