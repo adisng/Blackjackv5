@@ -19,8 +19,10 @@ const SUIT_GLYPHS: Record<Suit, string> = {
 const faceCache = new Map<string, THREE.CanvasTexture>()
 let backCache: THREE.CanvasTexture | null = null
 
+// Logical drawing space stays 256x358; the canvas renders at 2x for sharpness.
 const W = 256
 const H = 358
+const RES = 2
 
 /** Generate a card face texture (rank + suit) on a canvas. Cached per rank+suit. */
 export function getFaceTexture(rank: Rank, suit: Suit): THREE.CanvasTexture {
@@ -29,9 +31,10 @@ export function getFaceTexture(rank: Rank, suit: Suit): THREE.CanvasTexture {
   if (cached) return cached
 
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = W * RES
+  canvas.height = H * RES
   const ctx = canvas.getContext('2d')!
+  ctx.scale(RES, RES)
 
   // Ivory face with rounded corners
   ctx.fillStyle = IVORY
@@ -71,7 +74,8 @@ export function getFaceTexture(rank: Rank, suit: Suit): THREE.CanvasTexture {
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 4
+  texture.anisotropy = 8
+  texture.needsUpdate = true
   faceCache.set(key, texture)
   return texture
 }
@@ -81,9 +85,10 @@ export function getBackTexture(): THREE.CanvasTexture {
   if (backCache) return backCache
 
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = W * RES
+  canvas.height = H * RES
   const ctx = canvas.getContext('2d')!
+  ctx.scale(RES, RES)
 
   ctx.fillStyle = CHARCOAL
   roundRect(ctx, 0, 0, W, H, 18)
@@ -131,7 +136,8 @@ export function getBackTexture(): THREE.CanvasTexture {
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 4
+  texture.anisotropy = 8
+  texture.needsUpdate = true
   backCache = texture
   return texture
 }

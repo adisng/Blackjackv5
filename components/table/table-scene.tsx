@@ -2,6 +2,7 @@
 
 import { memo, Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { AdaptiveDpr } from '@react-three/drei'
 import * as THREE from 'three'
 import { Card3D } from '@/components/cards/card-3d'
 import {
@@ -9,6 +10,8 @@ import {
   ChipStack,
   DealerPresence,
   PendantLamp,
+  SahurCharacter,
+  sahurImpact,
   TableSurface,
   WinSparkles,
 } from './table-environment'
@@ -24,30 +27,118 @@ const DEAL_STAGGER = 0.22
  * On narrow (portrait) screens the camera pulls back and rises so the
  * full table — dealer row to betting circle — stays in frame.
  */
-function CameraRig({ reducedMotion }: { reducedMotion: boolean }) {
+const INTRO_POS: [number, number, number] = [0, 1.75, -1.55]
+const INTRO_LOOK: [number, number, number] = [0, 1.55, -3.4]
+// Loss cutscene: close-up right in front of Sahur so his hit fills the frame
+const HIT_POS: [number, number, number] = [0, 1.65, -1.35]
+const HIT_LOOK: [number, number, number] = [0, 1.45, -3.3]
+const HIT_SCENE_DURATION = 1.25
+const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+
+function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: boolean }) {
   const { camera, size } = useThree()
   const t = useRef(0)
+  // One-time cinematic intro (Sahur dealer only): hold a close-up until the
+  // first chip/deal tap, then dolly out to the standard table framing.
+  const intro = useRef<{ mode: 'intro' | 'transition' | 'idle'; p: number }>({
+    mode: sahur && !reducedMotion ? 'intro' : 'idle',
+    p: 0,
+  })
+  // Short loss cutscene: zoom into Sahur, he hits, snap straight back.
+  const cut = useRef({ p: -1, lastRound: -1 })
 
   useFrame((_, delta) => {
     if (!reducedMotion) t.current += delta
     const drift = reducedMotion ? 0 : Math.sin(t.current * 0.25) * 0.06
     const driftY = reducedMotion ? 0 : Math.sin(t.current * 0.18) * 0.03
 
-    // 1 on wide screens, up to ~1.8 on tall portrait phones
+    // 1 on wide screens, up to ~1.3 on tall portrait phones.
+    // Kept tight so the camera stays close and cards read large.
     const aspect = size.width / Math.max(1, size.height)
-    const k = THREE.MathUtils.clamp(1.15 / aspect, 1, 1.85)
+    const k = THREE.MathUtils.clamp(1.15 / aspect, 1, 1.3)
 
     const targetX = drift * 1.2
-    const targetY = 4.55 * Math.pow(k, 0.62) + driftY
-    const targetZ = 4.9 * k
+    const targetY = 4.75 * Math.pow(k, 0.55) + driftY
+    const targetZ = 4.7 * k
+
+    const st = intro.current
+    if (st.mode === 'intro') {
+      const gs = useGame.getState()
+      if (gs.bet > 0 || gs.phase !== 'BETTING') {
+        st.mode = 'transition'
+      } else {
+        camera.position.set(INTRO_POS[0], INTRO_POS[1], INTRO_POS[2])
+        camera.lookAt(INTRO_LOOK[0], INTRO_LOOK[1], INTRO_LOOK[2])
+        return
+      }
+    }
+    if (st.mode === 'transition') {
+      // Single eased dolly-out from the close-up to the gameplay camera
+      st.p = Math.min(1, st.p + delta / 1.05)
+      const e = easeInOut(st.p)
+      camera.position.set(
+        THREE.MathUtils.lerp(INTRO_POS[0], targetX, e),
+        THREE.MathUtils.lerp(INTRO_POS[1], targetY, e),
+        THREE.MathUtils.lerp(INTRO_POS[2], targetZ, e),
+      )
+      camera.lookAt(
+        THREE.MathUtils.lerp(INTRO_LOOK[0], 0, e),
+        THREE.MathUtils.lerp(INTRO_LOOK[1], -0.3, e),
+        THREE.MathUtils.lerp(INTRO_LOOK[2], -0.35, e),
+      )
+      if (st.p >= 1) st.mode = 'idle'
+      return
+    }
+
+    // --- Loss cutscene (Sahur only): dolly in, take the hit, snap back ---
+    if (sahur && !reducedMotion) {
+      const gs = useGame.getState()
+      const isLoss = gs.phase === 'RESULT' && gs.banner?.tone === 'red'
+      if (isLoss && gs.roundId !== cut.current.lastRound) {
+        cut.current.lastRound = gs.roundId
+        cut.current.p = 0
+      }
+      if (cut.current.p >= 0) {
+        cut.current.p = Math.min(1, cut.current.p + delta / HIT_SCENE_DURATION)
+        const p = cut.current.p
+        if (p >= 1) {
+          // Return to the game instantly — hard cut, no easing back
+          cut.current.p = -1
+          camera.position.set(targetX, targetY, targetZ)
+          camera.lookAt(0, -0.3, -0.35)
+          return
+        }
+        // Fast eased zoom in over the first quarter, then hold for the hit
+        const e = easeInOut(Math.min(1, p / 0.28))
+        const hitShake =
+          sahurImpact.shake > 0 ? (Math.random() - 0.5) * 2 * sahurImpact.shake * 2.2 : 0
+        camera.position.set(
+          THREE.MathUtils.lerp(targetX, HIT_POS[0], e) + hitShake,
+          THREE.MathUtils.lerp(targetY, HIT_POS[1], e) + hitShake * 0.7,
+          THREE.MathUtils.lerp(targetZ, HIT_POS[2], e),
+        )
+        camera.lookAt(
+          THREE.MathUtils.lerp(0, HIT_LOOK[0], e),
+          THREE.MathUtils.lerp(-0.3, HIT_LOOK[1], e),
+          THREE.MathUtils.lerp(-0.35, HIT_LOOK[2], e),
+        )
+        return
+      }
+    }
+
+    // Brief impact shake driven by the Sahur bat swing
+    const shake = sahurImpact.shake > 0 && !reducedMotion
+      ? (Math.random() - 0.5) * 2 * sahurImpact.shake
+      : 0
 
     // Smooth toward target so resizes/rotations never snap
-    camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 8, delta)
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 8, delta)
+    camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 8, delta) + shake
+    camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 8, delta) + shake * 0.6
     camera.position.z = THREE.MathUtils.damp(camera.position.z, targetZ, 8, delta)
-    // Aim between the dealer row and the player's cards so the player's
-    // hand sits in the clear middle of the screen — never behind the HUD.
-    camera.lookAt(0, -0.35, 0.7)
+    // Aim between the dealer row (z=-1.9) and the player's cards (z=1.9) with
+    // a stronger downward tilt so the dealer's cards read clearly while the
+    // player's hand stays in the clear middle — never behind the HUD.
+    camera.lookAt(0, -0.3, -0.35)
   })
 
   return null
@@ -82,7 +173,11 @@ function SceneLights({ accent, shadowSize }: { accent: string; shadowSize: numbe
  * Memoized and kept OUTSIDE the per-round keyed group so it never
  * remounts between hands (remounting it caused a visible hitch).
  */
-const StaticEnvironment = memo(function StaticEnvironment() {
+const StaticEnvironment = memo(function StaticEnvironment({
+  reducedMotion,
+}: {
+  reducedMotion: boolean
+}) {
   const dealerId = useSettings((s) => s.dealerId)
   const feltColor = useSettings((s) => s.feltColor)
   const dealer = getDealer(dealerId)
@@ -93,12 +188,16 @@ const StaticEnvironment = memo(function StaticEnvironment() {
       <TableSurface feltColor={felt.felt} trimColor={felt.trim} />
       <CardShoe />
       <PendantLamp />
-      <DealerPresence
-        name={dealer.name}
-        accent={dealer.accent}
-        portraitBg={dealer.portraitBg}
-        portraitFg={dealer.portraitFg}
-      />
+      {dealer.id === 'tung-sahur' ? (
+        <SahurCharacter name={dealer.name} accent={dealer.accent} reducedMotion={reducedMotion} />
+      ) : (
+        <DealerPresence
+          name={dealer.name}
+          accent={dealer.accent}
+          portraitBg={dealer.portraitBg}
+          portraitFg={dealer.portraitFg}
+        />
+      )}
     </group>
   )
 })
@@ -180,9 +279,22 @@ function GameElements({ reducedMotion }: { reducedMotion: boolean }) {
         <WinSparkles active={showWinSparkles} />
       </group>
 
-      <StaticEnvironment />
+      <StaticEnvironment reducedMotion={reducedMotion} />
     </>
   )
+}
+
+/**
+ * Screen-space red vignette flash for the Sahur loss cutscene.
+ * Keyed by roundId so the CSS animation restarts on every fresh loss.
+ */
+function LossVignette({ active }: { active: boolean }) {
+  const phase = useGame((s) => s.phase)
+  const tone = useGame((s) => s.banner?.tone)
+  const roundId = useGame((s) => s.roundId)
+
+  if (!active || phase !== 'RESULT' || tone !== 'red') return null
+  return <div key={roundId} className="loss-vignette pointer-events-none absolute inset-0" />
 }
 
 export function TableScene() {
@@ -209,17 +321,19 @@ export function TableScene() {
     <div className="absolute inset-0" aria-hidden="true">
       <Canvas
         shadows="percentage"
-        camera={{ position: [0, 4.55, 4.9], fov: 42 }}
+        camera={{ position: [0, 4.75, 4.7], fov: 37 }}
         gl={{ antialias, powerPreference: 'high-performance', stencil: false }}
         dpr={dpr}
       >
         <color attach="background" args={['#0B0C0E']} />
         <fog attach="fog" args={['#0B0C0E', 9, 18]} />
         <Suspense fallback={null}>
-          <CameraRig reducedMotion={reducedMotion} />
+          <CameraRig reducedMotion={reducedMotion} sahur={dealer.id === 'tung-sahur'} />
           <SceneLights accent={dealer.accent} shadowSize={shadowSize} />
           <GameElements reducedMotion={reducedMotion} />
         </Suspense>
+        {/* Dynamically lowers resolution during motion to hold 60fps */}
+        <AdaptiveDpr pixelated />
       </Canvas>
       {/* Screen-space vignette */}
       <div
@@ -229,6 +343,8 @@ export function TableScene() {
             'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%)',
         }}
       />
+      {/* Red flash synced to the Sahur loss cutscene */}
+      <LossVignette active={dealer.id === 'tung-sahur'} />
     </div>
   )
 }

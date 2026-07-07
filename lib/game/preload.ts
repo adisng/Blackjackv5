@@ -6,6 +6,7 @@ const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', '
 const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
 
 const FONT_URLS = ['/fonts/Geist-Bold.ttf', '/fonts/Geist-Regular.ttf']
+const MODEL_URLS = ['/models/tung-sahur.fbx', '/models/tung-sahur-texture.png']
 
 let preloadPromise: Promise<void> | null = null
 
@@ -44,8 +45,9 @@ export function preloadAssets(onProgress: (pct: number) => void): Promise<void> 
     })
 
     // 2. Warm the HTTP cache for the 3D text fonts (used by drei <Text>)
+    //    and the Sahur dealer model + texture so the scene never hitches.
     const fontsPromise = Promise.all(
-      FONT_URLS.map((url) =>
+      [...FONT_URLS, ...MODEL_URLS].map((url) =>
         fetch(url, { cache: 'force-cache' }).catch(() => null),
       ),
     ).then(() => {
