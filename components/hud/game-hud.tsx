@@ -184,9 +184,9 @@ export function GameHud() {
     split()
   }
 
-  // Show review modal after every 3 completed rounds
+  // Show review modal after every 3 bets placed (deals)
   useEffect(() => {
-    if (phase !== 'RESULT') return
+    if (phase !== 'DEALING') return
     completedRounds.current += 1
     if (completedRounds.current % 3 === 0) {
       setTimeout(() => setReviewOpen(true), 1200)
