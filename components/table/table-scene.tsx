@@ -11,6 +11,7 @@ import {
   DealerPresence,
   GLBCharacter,
   PendantLamp,
+  SahurCharacter,
   sahurImpact,
   TableSurface,
   WinSparkles,
@@ -55,11 +56,15 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
     // 1 on wide screens, up to ~1.3 on tall portrait phones.
     // Kept tight so the camera stays close and cards read large.
     const aspect = size.width / Math.max(1, size.height)
-    const k = THREE.MathUtils.clamp(1.15 / aspect, 1, 1.3)
+    const isMobile = aspect < 0.75
 
+    // On mobile: lower, closer, steeper angle focused on the card area
+    // On desktop: standard over-the-shoulder view
     const targetX = drift * 1.2
-    const targetY = 4.75 * Math.pow(k, 0.55) + driftY
-    const targetZ = 4.7 * k
+    const targetY = isMobile ? 3.2 + driftY : 4.75 * Math.pow(Math.min(1.15 / aspect, 1.3), 0.55) + driftY
+    const targetZ = isMobile ? 3.0 : 4.7 * Math.min(1.15 / aspect, 1.3)
+    const lookY = isMobile ? 0.4 : -0.3
+    const lookZ = isMobile ? -0.8 : -0.35
 
     const st = intro.current
     if (st.mode === 'intro') {
@@ -83,8 +88,8 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
       )
       camera.lookAt(
         THREE.MathUtils.lerp(INTRO_LOOK[0], 0, e),
-        THREE.MathUtils.lerp(INTRO_LOOK[1], -0.3, e),
-        THREE.MathUtils.lerp(INTRO_LOOK[2], -0.35, e),
+        THREE.MathUtils.lerp(INTRO_LOOK[1], lookY, e),
+        THREE.MathUtils.lerp(INTRO_LOOK[2], lookZ, e),
       )
       if (st.p >= 1) st.mode = 'idle'
       return
@@ -105,7 +110,7 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
           // Return to the game instantly — hard cut, no easing back
           cut.current.p = -1
           camera.position.set(targetX, targetY, targetZ)
-          camera.lookAt(0, -0.3, -0.35)
+          camera.lookAt(0, lookY, lookZ)
           return
         }
         // Fast eased zoom in over the first quarter, then hold for the hit
@@ -135,10 +140,7 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
     camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 8, delta) + shake
     camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 8, delta) + shake * 0.6
     camera.position.z = THREE.MathUtils.damp(camera.position.z, targetZ, 8, delta)
-    // Aim between the dealer row (z=-1.9) and the player's cards (z=1.9) with
-    // a stronger downward tilt so the dealer's cards read clearly while the
-    // player's hand stays in the clear middle — never behind the HUD.
-    camera.lookAt(0, -0.3, -0.35)
+    camera.lookAt(0, lookY, lookZ)
   })
 
   return null
@@ -190,7 +192,9 @@ const StaticEnvironment = memo(function StaticEnvironment({
       <TableSurface feltColor={felt.felt} trimColor={felt.trim} />
       <CardShoe />
       <PendantLamp />
-      {dealer.glb ? (
+      {dealer.id === 'tung-sahur' ? (
+        <SahurCharacter name={dealer.name} accent={dealer.accent} reducedMotion={reducedMotion} />
+      ) : dealer.glb ? (
         <GLBCharacter glb={dealer.glb} name={dealer.name} accent={dealer.accent} reducedMotion={reducedMotion} />
       ) : (
         <DealerPresence
@@ -304,18 +308,18 @@ export function TableScene() {
   const dealerId = useSettings((s) => s.dealerId)
   const dealer = getDealer(dealerId)
 
-  const isCutsceneDealer = !!dealer.glb
-  const { dpr, antialias, shadowSize } = useMemo(() => {
+  const isCutsceneDealer = dealer.id === 'tung-sahur' || !!dealer.glb
+  const { dpr, antialias, shadowSize, fov } = useMemo(() => {
     if (typeof window === 'undefined') {
-      return { dpr: [1, 1.75] as [number, number], antialias: true, shadowSize: 1024 }
+      return { dpr: [1, 1.75] as [number, number], antialias: true, shadowSize: 1024, fov: 37 }
     }
     const isSmall = window.innerWidth < 768
     const highDpr = window.devicePixelRatio > 1.5
     return {
-      // High-density phones already supersample — cap DPR and skip MSAA there
       dpr: (isSmall ? [1, 1.5] : [1, 1.75]) as [number, number],
       antialias: !(isSmall && highDpr),
       shadowSize: isSmall ? 512 : 1024,
+      fov: isSmall ? 52 : 37,
     }
   }, [])
 
@@ -323,7 +327,7 @@ export function TableScene() {
     <div className="absolute inset-0" aria-hidden="true">
       <Canvas
         shadows="percentage"
-        camera={{ position: [0, 4.75, 4.7], fov: 37 }}
+        camera={{ position: [0, 4.75, 4.7], fov }}
         gl={{ antialias, powerPreference: 'high-performance', stencil: false }}
         dpr={dpr}
       >

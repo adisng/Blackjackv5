@@ -5,6 +5,7 @@ import { useFrame, useLoader } from '@react-three/fiber'
 import { RoundedBox, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { useGame } from '@/lib/game/store'
 
 const GOLD = '#C9A227'
@@ -301,6 +302,109 @@ export function GLBCharacter({
 
   return (
     <group ref={group} position={[0, -0.65, -3.2]}>
+      <group ref={model}>
+        <primitive object={scene} scale={scale} position={[0, yOffset, 0]} />
+      </group>
+      <group position={[0, -0.6, 1.15]} rotation={[-0.5, 0, 0]}>
+        <RoundedBox args={[1.7, 0.34, 0.05]} radius={0.02} castShadow>
+          <meshStandardMaterial color="#141210" roughness={0.35} metalness={0.5} />
+        </RoundedBox>
+        <Text
+          position={[0, 0, 0.032]}
+          fontSize={0.11}
+          color={accent}
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.12}
+          font="/fonts/Geist-Regular.ttf"
+        >
+          {name.toUpperCase()}
+        </Text>
+      </group>
+    </group>
+  )
+}
+
+/** Original Tung Tung Tung Sahur using FBX + texture. */
+export function SahurCharacter({
+  name,
+  accent,
+  reducedMotion,
+}: {
+  name: string
+  accent: string
+  reducedMotion: boolean
+}) {
+  const group = useRef<THREE.Group>(null)
+  const model = useRef<THREE.Group>(null)
+  const anim = useRef({ t: 0, swing: -1, wait: 0, lastRound: -1 })
+
+  const fbx = useLoader(FBXLoader, '/models/tung-sahur.fbx')
+  const texture = useLoader(THREE.TextureLoader, '/models/tung-sahur-texture.png')
+
+  const { scene, scale, yOffset } = useMemo(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.flipY = true
+    const scene = fbx.clone()
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
+        mesh.castShadow = true
+        mesh.receiveShadow = false
+        mesh.material = new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.75,
+          metalness: 0.02,
+        })
+      }
+    })
+    const box = new THREE.Box3().setFromObject(scene)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    const height = Math.max(size.y, 0.0001)
+    const scale = 2.1 / height
+    const yOffset = -box.min.y * scale
+    return { scene, scale, yOffset }
+  }, [fbx, texture])
+
+  useFrame((_, delta) => {
+    const g = group.current
+    if (!g) return
+    const a = anim.current
+    if (!reducedMotion) a.t += delta
+    g.position.y = 0.05 + (reducedMotion ? 0 : Math.sin(a.t * 1.1) * 0.02)
+    g.rotation.z = reducedMotion ? 0 : Math.sin(a.t * 0.8) * 0.02
+    g.rotation.y = reducedMotion ? 0 : Math.sin(a.t * 0.5) * 0.05
+    const gs = useGame.getState()
+    const isLoss = gs.phase === 'RESULT' && gs.banner?.tone === 'red'
+    if (isLoss && gs.roundId !== a.lastRound) {
+      a.lastRound = gs.roundId
+      a.swing = 0
+      a.wait = 0.32
+    }
+    const m = model.current
+    if (!m || a.swing < 0) return
+    if (a.wait > 0) { a.wait -= delta; return }
+    a.swing = Math.min(1, a.swing + delta / (a.swing < 0.35 ? 0.3 : 0.55))
+    const p = a.swing
+    const amount = p < 0.35 ? easeOutCubicEnv(p / 0.35) : 1 - easeInOutEnv((p - 0.35) / 0.65)
+    if (!reducedMotion) {
+      m.rotation.x = amount * 0.45
+      m.position.z = amount * 0.5
+      m.position.y = -amount * 0.12
+      sahurImpact.shake = p > 0.28 && p < 0.5 ? 0.035 : 0
+    }
+    if (a.swing >= 1) {
+      a.swing = -1
+      m.rotation.x = 0
+      m.position.z = 0
+      m.position.y = 0
+      sahurImpact.shake = 0
+    }
+  })
+
+  return (
+    <group ref={group} position={[0, 0.05, -3.5]}>
       <group ref={model}>
         <primitive object={scene} scale={scale} position={[0, yOffset, 0]} />
       </group>

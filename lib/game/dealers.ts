@@ -36,7 +36,6 @@ export const DEALERS: DealerPersona[] = [
   },
   {
     id: 'tung-sahur',
-    glb: '/models/tung-sahur.glb',
     name: 'Tung Tung Tung Sahur',
     tagline: 'Wakes the table for suhoor. Bats included.',
     accent: '#C96A2A',
