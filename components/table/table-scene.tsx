@@ -61,8 +61,8 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
     // On mobile: lower, closer, steeper angle focused on the card area
     // On desktop: standard over-the-shoulder view
     const targetX = drift * 1.2
-    const targetY = isMobile ? 3.2 + driftY : 4.75 * Math.pow(Math.min(1.15 / aspect, 1.3), 0.55) + driftY
-    const targetZ = isMobile ? 3.0 : 4.7 * Math.min(1.15 / aspect, 1.3)
+    const targetY = isMobile ? 3.2 + driftY : 5.5 * Math.pow(Math.min(1.15 / aspect, 1.3), 0.55) + driftY
+    const targetZ = isMobile ? 3.0 : 5.4 * Math.min(1.15 / aspect, 1.3)
     const lookY = isMobile ? 0.4 : -0.3
     const lookZ = isMobile ? -0.8 : -0.35
 
@@ -319,7 +319,7 @@ export function TableScene() {
       dpr: (isSmall ? [1, 1.5] : [1, 1.75]) as [number, number],
       antialias: !(isSmall && highDpr),
       shadowSize: isSmall ? 512 : 1024,
-      fov: isSmall ? 52 : 37,
+      fov: isSmall ? 52 : 42,
     }
   }, [])
 
