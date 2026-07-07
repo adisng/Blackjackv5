@@ -108,7 +108,6 @@ export function GameHud() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [actionsBusy, setActionsBusy] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
-  const completedRounds = useRef(0)
   const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const phase = useGame((s) => s.phase)
@@ -184,13 +183,16 @@ export function GameHud() {
     split()
   }
 
-  // Show review modal after every 3 bets placed, but wait until RESULT so game doesn't hang
+  // Show review modal: 3rd bet, 6th bet, 9th... doubling gap each time (3, 6, 12, 24...)
   const betsPlaced = useRef(0)
+  const nextReviewAt = useRef(3)
+  const reviewGap = useRef(3)
   useEffect(() => {
     if (phase !== 'DEALING') return
     betsPlaced.current += 1
-    if (betsPlaced.current % 3 === 0) {
-      // Wait until the round finishes before showing
+    if (betsPlaced.current === nextReviewAt.current) {
+      reviewGap.current *= 2
+      nextReviewAt.current = betsPlaced.current + reviewGap.current
       const check = setInterval(() => {
         if (useGame.getState().phase === 'RESULT') {
           clearInterval(check)
