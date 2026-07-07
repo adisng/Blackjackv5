@@ -27,7 +27,7 @@ let musicMuted = false
 let sfxBus: GainNode | null = null
 let musicBus: GainNode | null = null
 
-const MUSIC_VOLUME = 0.045
+const MUSIC_VOLUME = 0.08
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -231,106 +231,30 @@ export function playSound(name: SoundName) {
 }
 
 /* ────────────────────────────────────────────────────────────
- * Background music: a slow, warm lo-fi loop.
- * Jazzy minor-7th chord pads + soft bass + brushed hats,
- * with a gentle pentatonic melody that varies each pass.
+ * Background music: Mozart - Eine Kleine Nachtmusik (public domain)
+ * Streamed via <audio> element, routed through the Web Audio music bus
+ * so the existing mute toggle works seamlessly.
  * ──────────────────────────────────────────────────────────── */
 
+// Public domain Mozart recording from IMSLP / Internet Archive
+const MOZART_URL =
+  'https://upload.wikimedia.org/wikipedia/commons/3/3f/Eine_kleine_Nachtmusik_-_1._Allegro.ogg'
+
 let musicPlaying = false
-let schedulerTimer: ReturnType<typeof setInterval> | null = null
-let nextBarTime = 0
-let barIndex = 0
-
-const BAR_SECONDS = 2.6 // ~92bpm feel, 4 beats per bar
-
-// Warm progression: Am9 → Fmaj7 → Cmaj7 → G6 (frequencies in Hz)
-const CHORDS: { bass: number; pad: number[] }[] = [
-  { bass: 55.0, pad: [220.0, 261.63, 329.63, 493.88] }, // Am9
-  { bass: 43.65, pad: [174.61, 220.0, 261.63, 329.63] }, // Fmaj7
-  { bass: 65.41, pad: [196.0, 261.63, 329.63, 392.0] }, // Cmaj7
-  { bass: 49.0, pad: [196.0, 246.94, 293.66, 392.0] }, // G6
-]
-
-// A-minor pentatonic pool for the melody hook
-const MELODY_POOL = [440.0, 523.25, 587.33, 659.25, 783.99, 880.0]
+let mozartEl: HTMLAudioElement | null = null
+let mozartSource: MediaElementAudioSourceNode | null = null
 
 function getMusicBus(ac: AudioContext): GainNode {
   if (!musicBus) {
     const lp = ac.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 3200
+    lp.frequency.value = 6000
     musicBus = ac.createGain()
     musicBus.gain.value = musicMuted ? 0 : MUSIC_VOLUME
     musicBus.connect(lp)
     lp.connect(ac.destination)
   }
   return musicBus
-}
-
-function scheduleBar(ac: AudioContext, bus: GainNode, t0: number, bar: number) {
-  const chord = CHORDS[bar % CHORDS.length]
-
-  // Pad: slow-attack triangle chord, held for the whole bar
-  for (const f of chord.pad) {
-    tone(ac, {
-      freq: f,
-      type: 'triangle',
-      start: t0 - ac.currentTime,
-      duration: BAR_SECONDS * 0.95,
-      gain: 0.3,
-      attack: 0.7,
-      dest: bus,
-    })
-  }
-
-  // Bass: two soft notes per bar (beat 1 and the "and" of 3)
-  tone(ac, {
-    freq: chord.bass * 2,
-    type: 'sine',
-    start: t0 - ac.currentTime,
-    duration: 1.0,
-    gain: 0.55,
-    attack: 0.03,
-    dest: bus,
-  })
-  tone(ac, {
-    freq: chord.bass * 2,
-    type: 'sine',
-    start: t0 - ac.currentTime + BAR_SECONDS * 0.625,
-    duration: 0.7,
-    gain: 0.4,
-    attack: 0.03,
-    dest: bus,
-  })
-
-  // Brushed hats: light swung 8ths
-  for (let i = 0; i < 8; i++) {
-    const swing = i % 2 === 1 ? 0.07 : 0
-    noiseBurst(ac, {
-      start: t0 - ac.currentTime + (i / 8) * BAR_SECONDS + swing,
-      duration: 0.04,
-      gain: i % 4 === 2 ? 0.09 : 0.05,
-      highpass: 8000,
-      dest: bus,
-    })
-  }
-
-  // Melody: sparse pentatonic pluck, ~2 notes per bar, skips some bars
-  if (bar % 4 !== 3) {
-    const count = 1 + Math.floor(Math.random() * 2)
-    for (let i = 0; i < count; i++) {
-      const note = MELODY_POOL[Math.floor(Math.random() * MELODY_POOL.length)]
-      tone(ac, {
-        freq: note,
-        type: 'sine',
-        start: t0 - ac.currentTime + Math.random() * BAR_SECONDS * 0.7,
-        duration: 0.9,
-        gain: 0.22,
-        attack: 0.02,
-        dest: bus,
-      })
-    }
-  }
 }
 
 export function startMusic() {
@@ -344,26 +268,22 @@ export function startMusic() {
   bus.gain.setValueAtTime(0, ac.currentTime)
   if (!musicMuted) bus.gain.linearRampToValueAtTime(MUSIC_VOLUME, ac.currentTime + 2.5)
 
-  nextBarTime = ac.currentTime + 0.1
-  barIndex = 0
-
-  schedulerTimer = setInterval(() => {
-    if (!ctx) return
-    // Look ahead and schedule any bar starting within the next 0.5s
-    while (nextBarTime < ctx.currentTime + 0.5) {
-      scheduleBar(ctx, getMusicBus(ctx), nextBarTime, barIndex)
-      nextBarTime += BAR_SECONDS
-      barIndex++
-    }
-  }, 120)
+  if (!mozartEl) {
+    mozartEl = new Audio(MOZART_URL)
+    mozartEl.loop = true
+    mozartEl.crossOrigin = 'anonymous'
+    mozartSource = ac.createMediaElementSource(mozartEl)
+    mozartSource.connect(bus)
+  }
+  void mozartEl.play().catch(() => {})
 }
 
 export function stopMusic() {
   if (!musicPlaying) return
   musicPlaying = false
-  if (schedulerTimer) {
-    clearInterval(schedulerTimer)
-    schedulerTimer = null
+  if (mozartEl) {
+    mozartEl.pause()
+    mozartEl.currentTime = 0
   }
   if (musicBus && ctx) {
     musicBus.gain.cancelScheduledValues(ctx.currentTime)
