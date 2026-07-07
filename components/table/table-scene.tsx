@@ -41,7 +41,7 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
   // One-time cinematic intro (Sahur dealer only): hold a close-up until the
   // first chip/deal tap, then dolly out to the standard table framing.
   const intro = useRef<{ mode: 'intro' | 'transition' | 'idle'; p: number }>({
-    mode: sahur && !reducedMotion ? 'intro' : 'idle',
+    mode: sahur ? 'intro' : 'idle',
     p: 0,
   })
   // Short loss cutscene: zoom into Sahur, he hits, snap straight back.
@@ -90,8 +90,8 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
       return
     }
 
-    // --- Loss cutscene (Sahur only): dolly in, take the hit, snap back ---
-    if (sahur && !reducedMotion) {
+    // --- Loss cutscene (GLB dealers): dolly in, take the hit, snap back ---
+    if (sahur) {
       const gs = useGame.getState()
       const isLoss = gs.phase === 'RESULT' && gs.banner?.tone === 'red'
       if (isLoss && gs.roundId !== cut.current.lastRound) {
@@ -111,7 +111,7 @@ function CameraRig({ reducedMotion, sahur }: { reducedMotion: boolean; sahur: bo
         // Fast eased zoom in over the first quarter, then hold for the hit
         const e = easeInOut(Math.min(1, p / 0.28))
         const hitShake =
-          sahurImpact.shake > 0 ? (Math.random() - 0.5) * 2 * sahurImpact.shake * 2.2 : 0
+          sahurImpact.shake > 0 && !reducedMotion ? (Math.random() - 0.5) * 2 * sahurImpact.shake * 2.2 : 0
         camera.position.set(
           THREE.MathUtils.lerp(targetX, HIT_POS[0], e) + hitShake,
           THREE.MathUtils.lerp(targetY, HIT_POS[1], e) + hitShake * 0.7,
@@ -162,6 +162,8 @@ function SceneLights({ accent, shadowSize }: { accent: string; shadowSize: numbe
       />
       {/* Dim rim light from behind the dealer, tinted by dealer accent */}
       <directionalLight position={[-3, 2.5, -6]} intensity={0.9} color={accent} />
+      {/* Face light: soft front fill aimed at the dealer */}
+      <pointLight position={[0, 2.2, -2.2]} intensity={8} color="#ffdd88" distance={4} decay={2} />
       {/* Soft ambient fill so nothing goes pure black */}
       <ambientLight intensity={0.32} color="#b8c0cc" />
     </>

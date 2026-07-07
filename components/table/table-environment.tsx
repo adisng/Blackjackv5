@@ -245,7 +245,9 @@ export function GLBCharacter({
     const size = new THREE.Vector3()
     box.getSize(size)
     const height = Math.max(size.y, 0.0001)
-    const scale = 2.1 / height
+    const scale = 1.65 / height
+    // Place feet at y=0 within the group, then the group itself sits at y=-0.05
+    // (just below the table surface at y=0) so the character stands behind the table
     const yOffset = -box.min.y * scale
     return { scene, scale, yOffset }
   }, [gltf])
@@ -298,7 +300,7 @@ export function GLBCharacter({
   })
 
   return (
-    <group ref={group} position={[0, 0.05, -3.5]}>
+    <group ref={group} position={[0, -0.65, -3.2]}>
       <group ref={model}>
         <primitive object={scene} scale={scale} position={[0, yOffset, 0]} />
       </group>
